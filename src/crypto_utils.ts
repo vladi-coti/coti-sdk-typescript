@@ -570,14 +570,7 @@ export function decryptUint256(ciphertext: ctUint256, userKey: string): bigint {
     const low = decryptUint128(ciphertext.ciphertextLow, userKey)
   
     // Reconstruct the full 256-bit unsigned value
-    const unsigned = (high << 128n) | low;
-    
-    // Convert from unsigned to signed using two's complement for 256-bit
-    const maxInt256 = (1n << 255n) - 1n;
-    if (unsigned > maxInt256) {
-        return unsigned - (1n << 256n);
-    }
-    return unsigned;
+    return (high << 128n) | low;
 }
 
 export function decryptString(ciphertext: ctString, userKey: string): string {
