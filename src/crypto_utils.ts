@@ -264,22 +264,15 @@ export function signInputText(
     sender: { wallet: BaseWallet; userKey: string },
     contractAddress: string,
     functionSelector: string,
-    ct: bigint
+    ct: Uint8Array
 ): Uint8Array {
     // Get the bytes of the sender, contract, and function signature
     const senderBytes = new Uint8Array(Buffer.from(sender.wallet.address.slice(2), 'hex'))
     const contractBytes = new Uint8Array(Buffer.from(contractAddress.slice(2), 'hex'))
     const funcSigBytes = new Uint8Array(Buffer.from(functionSelector.slice(2), 'hex'))
-    
-    // Convert ct to bytes (32 bytes for uint256)
-    const ctBytes = new Uint8Array(32)
-    for (let i = 31; i >= 0; i--) {
-        ctBytes[i] = Number(ct & BigInt(255))
-        ct >>= BigInt(8)
-    }
-    
+
     // Create the message to be signed by concatenating all inputs
-    const message = new Uint8Array([...senderBytes, ...contractBytes, ...funcSigBytes, ...ctBytes])
+    const message = new Uint8Array([...senderBytes, ...contractBytes, ...funcSigBytes, ...ct])
     
     // Sign the message
     const key = new Uint8Array(Buffer.from(sender.wallet.privateKey.slice(2), 'hex'))
@@ -317,7 +310,7 @@ export function buildInputText(
     // Convert the ciphertext to BigInt
     const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
 
-    const signature = signInputText(sender, contractAddress, functionSelector, ctInt);
+    const signature = signInputText(sender, contractAddress, functionSelector, ct);
 
     return {
         ciphertext: ctInt,
@@ -394,7 +387,7 @@ export function buildUint128InputText(
     // Convert the ciphertext to BigInt
     const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
 
-    const signature = signInputText(sender, contractAddress, functionSelector, ctInt);
+    const signature = signInputText(sender, contractAddress, functionSelector, ct);
 
     return {
         ciphertext: ctInt,
@@ -455,7 +448,7 @@ export function buildUint256InputText(
 
     // Convert the ciphertext to BigInt for signing
     const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
-    const signature = signInputText(sender, contractAddress, functionSelector, ctInt)
+    const signature = signInputText(sender, contractAddress, functionSelector, ct)
 
     const ciphertextHigh = ct.slice(0, CT_SIZE)
     const ciphertextLow = ct.slice(CT_SIZE)
@@ -804,7 +797,7 @@ export function buildInt128InputText(
     // Convert the ciphertext to BigInt
     const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
 
-    const signature = signInputText(sender, contractAddress, functionSelector, ctInt);
+    const signature = signInputText(sender, contractAddress, functionSelector, ct);
 
     return {
         ciphertext: ctInt,
@@ -870,8 +863,7 @@ export function buildInt256InputText(
     }
 
     // Convert the ciphertext to BigInt for signing
-    const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
-    const signature = signInputText(sender, contractAddress, functionSelector, ctInt)
+    const signature = signInputText(sender, contractAddress, functionSelector, ct)
 
     const ciphertextHigh = ct.slice(0, CT_SIZE)
     const ciphertextLow = ct.slice(CT_SIZE)

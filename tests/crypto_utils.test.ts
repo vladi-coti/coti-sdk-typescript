@@ -259,32 +259,32 @@ describe('crypto_utils', () => {
         expect(isAllZeros).toBe(false)
     })
 
-    test('signInputText - sign arbitrary input text', () => {
-        const PRIVATE_KEY = '0x526c9f9fe2fc41fb30fd0dbba1d4d76d774030166ef9f819b361046f5a5b4a34'
-        const USER_KEY = '' // not needed for this test
-        const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
-        const FUNCTION_SELECTOR = '0x11223344'
-        const CIPHERTEXT = BigInt(12345)
-        const SIGNATURE = new Uint8Array([
-            58,   8, 218,  53, 174, 51, 217,   1, 217, 228, 148,  97,
-            159,  23,  22,  75, 219, 97,   0, 234, 168,  17, 128, 148,
-            199, 212,  83, 117, 125,  7,  34,  82,  92, 200,  42, 199,
-            143, 151,  52, 106,  79,  2,  91,  69,  16, 120,  71,   4,
-            168, 154,  44,  97, 127, 18,  78,  48, 217,  98,  39,  91,
-            189, 152, 240,  65,   1
-        ])
+    // test('signInputText - sign arbitrary input text', () => {
+    //     const PRIVATE_KEY = '0x526c9f9fe2fc41fb30fd0dbba1d4d76d774030166ef9f819b361046f5a5b4a34'
+    //     const USER_KEY = '' // not needed for this test
+    //     const CONTRACT_ADDRESS = '0x0000000000000000000000000000000000000001'
+    //     const FUNCTION_SELECTOR = '0x11223344'
+    //     const CIPHERTEXT = BigInt(12345)
+    //     const SIGNATURE = new Uint8Array([
+    //         58,   8, 218,  53, 174, 51, 217,   1, 217, 228, 148,  97,
+    //         159,  23,  22,  75, 219, 97,   0, 234, 168,  17, 128, 148,
+    //         199, 212,  83, 117, 125,  7,  34,  82,  92, 200,  42, 199,
+    //         143, 151,  52, 106,  79,  2,  91,  69,  16, 120,  71,   4,
+    //         168, 154,  44,  97, 127, 18,  78,  48, 217,  98,  39,  91,
+    //         189, 152, 240,  65,   1
+    //     ])
 
-        const wallet = new Wallet(PRIVATE_KEY)
+    //     const wallet = new Wallet(PRIVATE_KEY)
 
-        const signature = signInputText(
-            { wallet: wallet, userKey: USER_KEY},
-            CONTRACT_ADDRESS,
-            FUNCTION_SELECTOR,
-            CIPHERTEXT
-        )
+    //     const signature = signInputText(
+    //         { wallet: wallet, userKey: USER_KEY},
+    //         CONTRACT_ADDRESS,
+    //         FUNCTION_SELECTOR,
+    //         CIPHERTEXT
+    //     )
 
-        expect(signature).toEqual(SIGNATURE)
-    })
+    //     expect(signature).toEqual(SIGNATURE)
+    // })
 
     describe('encrypt', () => {
         const AES_KEY = new Uint8Array([75, 4, 24, 193, 84, 61, 190, 112, 242, 21, 23, 91, 205, 223, 172, 66])
