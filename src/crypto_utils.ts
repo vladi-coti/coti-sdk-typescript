@@ -820,27 +820,72 @@ export function buildInt256InputText(
 ): itInt256 {
     // Type and range validation for int256
     validateBigIntRange(plaintext, -(1n << 255n), (1n << 255n) - 1n, "int256")
-
-    // Convert to hex string and ensure it is 64 characters (32 bytes), handling two's complement for negatives
+    
+    // Convert to unsigned representation for encryption (two's complement)
     let value = plaintext;
     if (plaintext < 0n) {
         value = (1n << 256n) + plaintext;
     }
-    const hexString = value.toString(16).padStart(64, '0');
+    
+    // Convert the plaintext to bytes
+    const plaintextBigInt = BigInt(value)
+    const bitSize = plaintextBigInt.toString(2).length
+    if (bitSize > MAX_PLAINTEXT_BIT_SIZE) {
+        throw new RangeError("Plaintext size must be 256 bits or smaller.")
+    }
 
-    // Split into two 16-byte (32-character) segments
-    const high = hexString.slice(0, 32);
-    const low = hexString.slice(32, 64);
+    // Convert user key to bytes
+    const keyBytes = encodeKey(sender.userKey)
+    let ct: Uint8Array
 
-    const itHigh = buildUint128InputText(BigInt(`0x${high}`), sender, contractAddress, functionSelector)
-    const itLow = buildUint128InputText(BigInt(`0x${low}`), sender, contractAddress, functionSelector)
+    // In case of 128 bits plaintext, encrypt it as the low part of the ct, and then encrypt the high part of the ct with zeros
+    if (bitSize <= MAX_PLAINTEXT_BIT_SIZE / 2) {
+        const plaintextBytes = new Uint8Array(BLOCK_SIZE) // Allocate a buffer of size 16 bytes
+        writeBigUInt128BE(plaintextBytes, plaintextBigInt) // Write the uint128 value to the buffer as big-endian
+        // Encrypt the plaintext using AES key
+        const {ciphertext, r} = encrypt(keyBytes, plaintextBytes)
+
+        // Encrypt the high part of the ct with zeros
+        const zero = BigInt(0)
+        const zeroBytes = new Uint8Array(BLOCK_SIZE)
+        writeBigUInt128BE(zeroBytes, zero)
+        const {ciphertext: ciphertextHigh, r: rHigh} = encrypt(keyBytes, zeroBytes)
+        ct = new Uint8Array([...ciphertextHigh, ...rHigh, ...ciphertext, ...r])
+        
+    } else if (bitSize <= MAX_PLAINTEXT_BIT_SIZE) {
+        const plaintextBytes = new Uint8Array(CT_SIZE) // Allocate a buffer of size 32 bytes
+        writeBigUInt256BE(plaintextBytes, plaintextBigInt) // Write the uint256 value to the buffer as big-endian
+        
+        // Encrypt each part of the plaintext using AES key
+        const resultHigh = encrypt(keyBytes, plaintextBytes.slice(0, BLOCK_SIZE))
+        const resultLow = encrypt(keyBytes, plaintextBytes.slice(BLOCK_SIZE))
+        
+        // Now destructure
+        const { ciphertext: ciphertextHigh, r: rHigh } = resultHigh
+        const { ciphertext: ciphertextLow, r: rLow } = resultLow
+
+        ct = new Uint8Array([...ciphertextHigh, ...rHigh, ...ciphertextLow, ...rLow])
+    } else {
+        throw new RangeError("Plaintext size must be 256 bits or smaller.")
+    }
+
+    // Convert the ciphertext to BigInt for signing
+    const ctInt = BigInt('0x' + Buffer.from(ct).toString('hex'))
+    const signature = signInputText(sender, contractAddress, functionSelector, ctInt)
+
+    const ciphertextHigh = ct.slice(0, CT_SIZE)
+    const ciphertextLow = ct.slice(CT_SIZE)
+
+    // Convert Buffer to uint256 (BigInt) for Solidity compatibility
+    const ciphertextHighUint = BigInt('0x' + Buffer.from(ciphertextHigh).toString('hex'))
+    const ciphertextLowUint = BigInt('0x' + Buffer.from(ciphertextLow).toString('hex'))
 
     return {
         ciphertext: {
-            ciphertextHigh: itHigh.ciphertext,
-            ciphertextLow: itLow.ciphertext
+            ciphertextHigh: ciphertextHighUint,
+            ciphertextLow: ciphertextLowUint
         },
-        signature: itHigh.signature
+        signature: signature
     }
 }
 

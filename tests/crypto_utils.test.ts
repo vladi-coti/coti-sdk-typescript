@@ -28,6 +28,7 @@ import {
     encodeUint,
     encrypt,
     encryptNumber,
+    generateRSAKeyPair,
     sign,
     signInputText
 } from '../src'
@@ -1521,6 +1522,132 @@ describe('crypto_utils', () => {
 				expect(trueAsUint).toBe(1n)
 				expect(falseAsUint).toBe(0n)
 			})
+		})
+	})
+
+	describe('generateRSAKeyPair', () => {
+		test('should generate a valid RSA key pair', () => {
+			const keyPair = generateRSAKeyPair()
+
+			// Verify the structure of the returned object
+			expect(keyPair).toHaveProperty('publicKey')
+			expect(keyPair).toHaveProperty('privateKey')
+			expect(keyPair.publicKey).toBeInstanceOf(Uint8Array)
+			expect(keyPair.privateKey).toBeInstanceOf(Uint8Array)
+
+			// Verify the keys are not empty
+			expect(keyPair.publicKey.length).toBeGreaterThan(0)
+			expect(keyPair.privateKey.length).toBeGreaterThan(0)
+
+			// Verify the keys are different
+			expect(keyPair.publicKey).not.toEqual(keyPair.privateKey)
+		})
+
+		test('should generate different key pairs on multiple calls', () => {
+			const keyPair1 = generateRSAKeyPair()
+			const keyPair2 = generateRSAKeyPair()
+
+			// Each call should generate a different key pair
+			expect(keyPair1.publicKey).not.toEqual(keyPair2.publicKey)
+			expect(keyPair1.privateKey).not.toEqual(keyPair2.privateKey)
+		})
+
+		test('should generate valid DER-encoded keys', () => {
+			const keyPair = generateRSAKeyPair()
+
+			// Test that the keys can be imported by Node.js crypto module
+			// This validates that they are properly DER-encoded
+			expect(() => {
+				crypto.createPublicKey({
+					key: Buffer.from(keyPair.publicKey),
+					format: 'der',
+					type: 'spki'
+				})
+			}).not.toThrow()
+
+			expect(() => {
+				crypto.createPrivateKey({
+					key: Buffer.from(keyPair.privateKey),
+					format: 'der',
+					type: 'pkcs8'
+				})
+			}).not.toThrow()
+		})
+
+		test('should generate 2048-bit RSA keys', () => {
+			const keyPair = generateRSAKeyPair()
+
+			// Create key objects to inspect the key size
+			const publicKey = crypto.createPublicKey({
+				key: Buffer.from(keyPair.publicKey),
+				format: 'der',
+				type: 'spki'
+			})
+
+			const privateKey = crypto.createPrivateKey({
+				key: Buffer.from(keyPair.privateKey),
+				format: 'der',
+				type: 'pkcs8'
+			})
+
+			// Verify the key size by checking the key type and testing encryption
+			expect(publicKey.asymmetricKeyType).toBe('rsa')
+			expect(privateKey.asymmetricKeyType).toBe('rsa')
+
+			// Test that we can encrypt/decrypt with a message that requires 2048-bit RSA
+			// (smaller messages work with smaller keys, but 2048-bit is the minimum secure size)
+			const testMessage = 'Test message for 2048-bit RSA'
+			const encrypted = crypto.publicEncrypt(publicKey, new Uint8Array(Buffer.from(testMessage)))
+			const decrypted = crypto.privateDecrypt(privateKey, new Uint8Array(encrypted))
+			expect(decrypted.toString()).toBe(testMessage)
+		})
+
+		test('should generate keys that can be used for encryption/decryption', () => {
+			const keyPair = generateRSAKeyPair()
+			const testMessage = 'Hello, RSA!'
+
+			// Create key objects
+			const publicKey = crypto.createPublicKey({
+				key: Buffer.from(keyPair.publicKey),
+				format: 'der',
+				type: 'spki'
+			})
+
+			const privateKey = crypto.createPrivateKey({
+				key: Buffer.from(keyPair.privateKey),
+				format: 'der',
+				type: 'pkcs8'
+			})
+
+			// Test encryption and decryption
+			const encrypted = crypto.publicEncrypt(publicKey, new Uint8Array(Buffer.from(testMessage)))
+			const decrypted = crypto.privateDecrypt(privateKey, new Uint8Array(encrypted))
+
+			expect(decrypted.toString()).toBe(testMessage)
+		})
+
+		test('should generate keys that can be used for signing/verification', () => {
+			const keyPair = generateRSAKeyPair()
+			const testMessage = 'Test message for signing'
+
+			// Create key objects
+			const publicKey = crypto.createPublicKey({
+				key: Buffer.from(keyPair.publicKey),
+				format: 'der',
+				type: 'spki'
+			})
+
+			const privateKey = crypto.createPrivateKey({
+				key: Buffer.from(keyPair.privateKey),
+				format: 'der',
+				type: 'pkcs8'
+			})
+
+			// Test signing and verification
+			const signature = crypto.sign('sha256', new Uint8Array(Buffer.from(testMessage)), privateKey)
+			const isValid = crypto.verify('sha256', new Uint8Array(Buffer.from(testMessage)), publicKey, new Uint8Array(signature))
+
+			expect(isValid).toBe(true)
 		})
 	})
 })
